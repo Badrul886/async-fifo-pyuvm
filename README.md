@@ -186,7 +186,7 @@ This project demonstrates practical implementation of:
 
 This project is intended for educational and learning purposes.
 
-
+## ✅ Verification Results
 ![Terminal Pass](docs/async_fifo%20terminal%20PASS.png)
 ![Terminal Pass](docs/async_fifo%20waveform.png)
 
