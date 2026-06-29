@@ -151,23 +151,16 @@ make WAVES=1
 
 ```text
 async-fifo-pyuvm/
-│
 ├── rtl/
-│   ├── async_fifo.v
-│   ├── fifomem.v
-│   ├── sync2.v
-│   ├── rptr_empty.v
-│   └── wptr_full.v
-│
+│   └── async_fifo.sv       (Contains all 5 Verilog hardware modules)
+├── tb/
+│   └── test_async_fifo.py  (Contains the PyUVM Object-Oriented environment)
 ├── sim/
-│   ├── Makefile
-│   ├── test_async_fifo.py
-│   ├── drivers.py
-│   ├── monitors.py
-│   ├── scoreboard.py
-│   └── sequence.py
-│
-└── README.md
+│   └── Makefile            (Contains compilation paths and wave options)
+├── docs/
+│   ├── terminal_pass.png   (Your clean terminal screenshot showing green PASS)
+│   └── waveform.png        (Your GTKWave screenshot showing Gray code transition)
+└── README.md               (The front page of your project)
 ```
 
 ---
