@@ -1,68 +1,201 @@
-\# Asynchronous FIFO with PyUVM Verification Environment
+# Asynchronous FIFO with PyUVM Verification Environment
 
+## 📌 Overview
 
+This repository contains the RTL implementation and a complete **PyUVM-based verification environment** for a parameterized **Asynchronous FIFO**.
 
-\## 📌 Overview
+The project demonstrates reliable data transfer between two independent asynchronous clock domains (**100 MHz Write Clock** and **33 MHz Read Clock**) using:
 
-This repository contains the RTL design and a complete Universal Verification Methodology (UVM) testbench for a parameterized Asynchronous FIFO. The project demonstrates safe data transfer between two independent, asynchronous clock domains (100MHz Write / 33MHz Read) using 2-stage flip-flop synchronizers and Gray code pointer conversion.
+* 2-stage flip-flop synchronizers
+* Gray code pointer synchronization
+* Independent read/write clock domains
+* Transaction-level verification with PyUVM
 
+---
 
+## 🏗️ Design Architecture
 
-\## 🏗️ Architecture
+The RTL is modularized into five hardware blocks:
 
-The design is strictly modularized into five distinct hardware blocks:
+| Module       | Description                                                              |
+| ------------ | ------------------------------------------------------------------------ |
+| `fifomem`    | Dual-port SRAM storage array                                             |
+| `sync2`      | Two-stage flip-flop synchronizer for clock-domain crossing               |
+| `rptr_empty` | Read pointer logic, Binary-to-Gray conversion, and Empty flag generation |
+| `wptr_full`  | Write pointer logic, Binary-to-Gray conversion, and Full flag generation |
+| `async_fifo` | Top-level module integrating all FIFO components                         |
 
-1\. \*\*`fifomem`\*\*: Dual-port SRAM array.
+### Pointer Scheme
 
-2\. \*\*`sync2`\*\*: 2-stage synchronizers to mitigate metastability.
+The FIFO uses the standard **N+1-bit pointer technique** to distinguish between:
 
-3\. \*\*`rptr\_empty`\*\*: Read pointer logic (Binary to Gray conversion) and empty flag generation.
+* **Empty FIFO** → Read pointer equals Write pointer
+* **Full FIFO** → Write pointer has wrapped around while Read pointer has not
 
-4\. \*\*`wptr\_full`\*\*: Write pointer logic (Binary to Gray conversion) and full flag generation.
+Gray code pointers are synchronized across clock domains to minimize metastability during clock-domain crossing.
 
-5\. \*\*`async\_fifo`\*\*: Top-level wrapper.
+---
 
+## 🔬 Verification Strategy (PyUVM)
 
+The verification environment is implemented using:
 
-\*Note: The N+1 bit pointer mathematical trick is utilized to differentiate between completely full and completely empty states.\*
+* **Python**
+* **Cocotb**
+* **PyUVM**
 
+instead of a traditional linear SystemVerilog testbench.
 
+### Key Features
 
-\## 🔬 Verification Strategy (PyUVM)
+* Independent read and write agents operating at asynchronous clock frequencies
+* Transaction-Level Modeling (TLM)
+* Separate monitors for both clock domains
+* Automated scoreboard for functional checking
+* Fully object-oriented verification architecture
 
-The verification environment is built using Python, Cocotb, and PyUVM, moving away from linear SystemVerilog testbenches to an Object-Oriented, transaction-level architecture.
+### Verification Flow
 
+1. Write Driver generates randomized write transactions.
+2. Read Driver independently performs read operations.
+3. Monitors observe DUT interfaces without driving signals.
+4. Analysis Ports broadcast transactions.
+5. The Scoreboard compares expected and actual data to detect:
 
+   * Data corruption
+   * Data loss
+   * Data duplication
+   * Ordering violations
 
-\* \*\*Independent Agents:\*\* Two autonomous threads drive the read and write interfaces at unaligned clock frequencies.
+---
 
-\* \*\*Transaction Level Modeling (TLM):\*\* Custom `uvm\_monitor` classes spy on the physical bus, bundle the data into Python objects, and broadcast them via Analysis Ports.
+## 🐛 Development Bug Hunt (Authenticity Log)
 
-\* \*\*Automated Scoreboarding:\*\* A `uvm\_scoreboard` receives TLM broadcasts from both domains and mathematically verifies zero data corruption, dropping, or duplication across the clock boundaries.
+During development, several subtle hardware verification issues were discovered and resolved.
 
+### 1. Delta-Cycle Race Conditions
 
+**Problem**
 
-\## 🐛 The Bug Hunt (Authenticity Log)
+The initial verification environment suffered from driver/monitor race conditions at the picosecond (delta-cycle) level, resulting in inconsistent transaction capture.
 
-During development, the following microarchitectural edge cases were identified and resolved:
+**Solution**
 
-1\. \*\*Delta-Cycle Race Conditions:\*\* The initial testbench encountered driver/monitor race conditions at the picosecond level. \*\*Fix:\*\* Re-architected the testbench to simulate physical Setup/Hold times by driving data strictly on the `FallingEdge` and sampling on the subsequent setup window.
+The drivers were redesigned to emulate realistic hardware timing by:
 
-2\. \*\*Combinational Output Traps:\*\* The read monitor failed to capture the first byte of data because standard Async FIFOs utilize a continuous combinational read output (`assign rdata = mem\[raddr]`), which was overwritten instantly by the rising clock edge. \*\*Fix:\*\* Synchronized the read monitor to capture data prior to the clock edge boundary.
+* Driving signals on the `FallingEdge`
+* Sampling on the following setup window before the active clock edge
 
+This eliminated race conditions while modeling realistic setup/hold timing.
 
+---
 
-\## 🚀 How to Run
+### 2. Combinational Read Data Trap
 
-\*\*Prerequisites:\*\* Icarus Verilog (`iverilog`), Python 3, `cocotb`, and `pyuvm`.
+**Problem**
 
+The read monitor occasionally missed the first valid data word because the FIFO uses a combinational read path:
 
+```verilog
+assign rdata = mem[raddr];
+```
+
+The output changed immediately after the read pointer incremented, causing the monitor to sample the updated value instead of the intended data.
+
+**Solution**
+
+The read monitor was modified to capture `rdata` immediately **before** the read clock edge, ensuring the correct data word was observed before the combinational output changed.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+Install the following tools:
+
+* Python 3
+* Icarus Verilog (`iverilog`)
+* Cocotb
+* PyUVM
+
+---
+
+### Clone the Repository
 
 ```bash
+git clone https://github.com/YourUsername/async-fifo-pyuvm.git
+cd async-fifo-pyuvm
+```
 
-git clone \[https://github.com/YourUsername/async-fifo-pyuvm.git](https://github.com/YourUsername/async-fifo-pyuvm.git)
+---
 
-cd async-fifo-pyuvm/sim
+### Install Python Dependencies
 
+```bash
+pip install cocotb pyuvm
+```
+
+---
+
+### Run the Simulation
+
+```bash
+cd sim
 make WAVES=1
+```
+
+---
+
+## 📂 Repository Structure
+
+```text
+async-fifo-pyuvm/
+│
+├── rtl/
+│   ├── async_fifo.v
+│   ├── fifomem.v
+│   ├── sync2.v
+│   ├── rptr_empty.v
+│   └── wptr_full.v
+│
+├── sim/
+│   ├── Makefile
+│   ├── test_async_fifo.py
+│   ├── drivers.py
+│   ├── monitors.py
+│   ├── scoreboard.py
+│   └── sequence.py
+│
+└── README.md
+```
+
+---
+
+## 🎯 Learning Objectives
+
+This project demonstrates practical implementation of:
+
+* Clock Domain Crossing (CDC)
+* Asynchronous FIFO architecture
+* Gray code pointer synchronization
+* Two-stage synchronizers
+* Cocotb verification
+* PyUVM methodology
+* Transaction-Level Modeling (TLM)
+* Functional scoreboarding
+* Object-oriented hardware verification
+* Debugging real-world verification race conditions
+
+---
+
+## 📜 License
+
+This project is intended for educational and learning purposes.
+
+
+![Terminal Pass](docs/async_fifo%20terminal%20PASS.png)
+![Terminal Pass](docs/async_fifo%20waveform.png)
+
+
 
